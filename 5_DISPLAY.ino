@@ -1,9 +1,19 @@
 class oled
 {
-    String t;
     unsigned long lastNTPupdate = 0;
+    // This array keeps function pointers to all frames
+    // frames are the single views that slide in
+    FrameCallback frames[5] = { connectionState, sensorState, sensorOne, sensorTwo, sensorThree };
+
+    // how many frames are there?
+    int frameCount = 5;
+
+    // Overlays are statically drawn on top of a frame eg. a clock
+    OverlayCallback overlays[1] = { clockOverlay };
+    int overlaysCount = 1;
 
   public:
+    String t;
     bool dispEnabled = 0;
     int address;
 
@@ -19,16 +29,16 @@ class oled
     void dispUpdate() {
       if (dispEnabled == 1) {
         DBG_PRINTLN("UPDATE: Display");
-        showDispClear();
-        showDispTime(t);
-        showDispIP(WiFi.localIP().toString());
-        showDispWlan();
-        showDispMqtt();
-        showDispLines();
-        showDispSen();
-        showDispAct();
-        showDispInd();
-        showDispDisplay();
+        /*        showDispClear();
+                showDispTime(t);
+                showDispIP(WiFi.localIP().toString());
+                showDispWlan();
+                showDispMqtt();
+                showDispLines();
+                showDispSen();
+                showDispAct();
+                showDispInd();
+                showDispDisplay();*/
       }
     }
 
@@ -37,13 +47,37 @@ class oled
         DBG_PRINT("CHANGE: Display switched on: ");
         DBG_PRINTLN(dispAddress);
         address = dispAddress;
-        //display.begin(SSD1306_SWITCHCAPVCC, address, true);
-        //display.begin(SSD1306_SWITCHCAPVCC, DISP_DEF_ADDRESS);
-        if (!display.begin(SSD1306_SWITCHCAPVCC, address)){
-          DBG_PRINTLN("CHANGE: Error Display init");
-        }
-        display.ssd1306_command(SSD1306_DISPLAYON);
-        display.clearDisplay();
+        // The ESP is capable of rendering 60fps in 80Mhz mode
+        // but that won't give you much time for anything else
+        // run it in 160Mhz mode or just set it to 30 fps
+        ui.setTargetFPS(DISPLAY_FPS);
+
+        // Customize the active and inactive symbol
+        ui.setActiveSymbol(activeSymbol);
+        ui.setInactiveSymbol(inactiveSymbol);
+
+        // You can change this to
+        // TOP, LEFT, BOTTOM, RIGHT
+        ui.setIndicatorPosition(TOP);
+
+        // Defines where the first frame is located in the bar.
+        ui.setIndicatorDirection(LEFT_RIGHT);
+
+        // You can change the transition that is used
+        // SLIDE_LEFT, SLIDE_RIGHT, SLIDE_UP, SLIDE_DOWN
+        ui.setFrameAnimation(SLIDE_LEFT);
+
+        // Add frames
+        ui.setFrames(frames, frameCount);
+
+        // Add overlays
+        ui.setOverlays(overlays, overlaysCount);
+
+        // Initialising the UI will init the display too.
+        ui.init();
+        display.flipScreenVertically();
+        display.displayOn();
+        display.clear();
         display.display();
         dispEnabled = is_enabled;
         timeClient.begin();
@@ -78,20 +112,103 @@ class oled
         t += "0";
       t += minute(local);
     }
+
 }
 
 oledDisplay = oled();
 
+void clockOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->setFont(ArialMT_Plain_10);
+  display->drawString(10, 0, oledDisplay.t);
+}
+
+void sensorState(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(ArialMT_Plain_16);
+  if (sensorsStatus == 0) {
+    display->drawString(5, 20, "Sen: ");
+    display->drawString(40, 20, String(numberOfSensors));
+  }
+  else display->drawString(10, 20, "Sen:Er");
+}
+void connectionState(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(ArialMT_Plain_10);
+  if (oledDisplay.wlanOK) {
+    display->drawXbm(3, 20, wlan_logo_width, wlan_logo_height, wlan_logo);
+  }
+  display->drawString(25, 20, WiFi.localIP().toString());
+  if (oledDisplay.mqttOK) {
+    display->drawXbm(3, 40, mqtt_logo_width, mqtt_logo_height, mqtt_logo);
+  }
+}
+
+void sensorOne(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(ArialMT_Plain_16);
+  TemperatureSensor sensorToPrint = sensors[0];
+  String sensorName = sensorToPrint.sens_name;
+  display->drawString(5, 10, sensorName);
+  String sensorConnState = "Disconnected";
+  String sensorValue = "-1";
+  if ( sensorToPrint.sens_isConnected ) {
+    sensorConnState = "Connected";
+    sensorValue = String(sensorToPrint.sens_value);
+  }
+  display->setFont(ArialMT_Plain_10);
+  display->drawString(5, 28, sensorConnState);
+  display->setFont(ArialMT_Plain_16);
+  display->drawString(5, 45, sensorValue);
+}
+
+void sensorTwo(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(ArialMT_Plain_16);
+  TemperatureSensor sensorToPrint = sensors[1];
+  String sensorName = sensorToPrint.sens_name;
+  display->drawString(5, 10, sensorName);
+  String sensorConnState = "Disconnected";
+  String sensorValue = "-1";
+  if ( sensorToPrint.sens_isConnected ) {
+    sensorConnState = "Connected";
+    sensorValue = String(sensorToPrint.sens_value);
+  }
+  display->setFont(ArialMT_Plain_10);
+  display->drawString(5, 28, sensorConnState);
+  display->setFont(ArialMT_Plain_16);
+  display->drawString(5, 45, sensorValue);
+}
+
+void sensorThree(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(ArialMT_Plain_16);
+  TemperatureSensor sensorToPrint = sensors[2];
+  String sensorName = sensorToPrint.sens_name;
+  display->drawString(5, 10, sensorName);
+  String sensorConnState = "Disconnected";
+  String sensorValue = "-1";
+  if ( sensorToPrint.sens_isConnected ) {
+    sensorConnState = "Connected";
+    sensorValue = String(sensorToPrint.sens_value);
+  }
+  display->setFont(ArialMT_Plain_10);
+  display->drawString(5, 28, sensorConnState);
+  display->setFont(ArialMT_Plain_16);
+  display->drawString(5, 45, sensorValue);
+}
+
+
 void turnDisplayOff() {
   if (oledDisplay.dispEnabled) {
     DBG_PRINTLN("Switch OLED display off");
-    display.ssd1306_command(SSD1306_DISPLAYOFF);
+    display.displayOff();
     oledDisplay.dispEnabled = 0;
   }
   else {
     if (oledDisplay.address != 0) {
       DBG_PRINTLN("Switch OLED display on");
-      display.ssd1306_command(SSD1306_DISPLAYON);
+      display.displayOn();
       oledDisplay.dispEnabled = 1;
     }
   }
@@ -101,7 +218,7 @@ void handleRequestDisplay() {
   StaticJsonBuffer<1024> jsonBuffer;
   JsonObject& displayResponse = jsonBuffer.createObject();
   displayResponse["enabled"] = 0;
-  displayResponse["displayOn"] = 0;
+  displayResponse["displayOn"] = 0x3C;
   displayResponse["enabled"] = oledDisplay.dispEnabled;
   displayResponse["updisp"] = DISP_UPDATE;
   if (oledDisplay.dispEnabled == 1) {
@@ -127,7 +244,7 @@ void handleRequestDisp() {
     goto SendMessage;
   }
   if (request == "address") {
-    message = "0";
+    message = "0x3C";
     message = String(decToHex(oledDisplay.address, 2));
     goto SendMessage;
   }
@@ -159,12 +276,6 @@ void handleSetDisp() {
       dispAddress.toCharArray(copy, 4);
       address = strtol(copy, 0, 16);
     }
-    if (server.argName(i) == "updisp")  {
-      int newdup = server.arg(i).toInt();
-      if (newdup > 0) {
-        DISP_UPDATE = newdup * 1000;
-      }
-    }
     yield();
   }
   oledDisplay.change(address, oledDisplay.dispEnabled);
@@ -174,6 +285,7 @@ void handleSetDisp() {
 void dispStartScreen()               // Show Startscreen
 {
   if (oledDisplay.dispEnabled == 1 && oledDisplay.address != 0) {
+    display.displayOn();
     showDispCbpi();
     showDispSTA();
     showDispDisplay();
@@ -183,8 +295,8 @@ void dispStartScreen()               // Show Startscreen
 /* ######### Display functions ######### */
 void showDispClear()              // Clear Display
 {
-  display.clearDisplay();
-  display.display();
+  display.clear();
+  /*  display.display();*/
 }
 
 void showDispDisplay()            // Show
@@ -192,28 +304,28 @@ void showDispDisplay()            // Show
   display.display();
 }
 
-void showDispVal(String value)    // Display a String value
-{
-  display.print(value);
+/*void showDispVal(String value)    // Display a String value
+  {
+  display.drawString(value);
   display.display();
-}
+  }*/
 
-void showDispVal(int value)       // Display a Int value
-{
-  display.print(value);
+/*void showDispVal(int value)       // Display a Int value
+  {
+  display.drawString(value);
   display.display();
-}
-
-void showDispWlan()               // Show WLAN icon
-{
-  if (oledDisplay.wlanOK) {
-    display.drawBitmap(77, 3, wlan_logo, 20, 20, WHITE);
   }
-}
+*/
+/*void showDispWlan()               // Show WLAN icon
+  {
+  if (oledDisplay.wlanOK) {
+    display.drawXbm(77, 3, 20, 20, wlan_logo);
+  }
+  }*/
 void showDispMqtt()               // SHow MQTT icon
 {
   if (oledDisplay.mqttOK) {
-    display.drawBitmap(102, 3, mqtt_logo, 20, 20, WHITE);
+    display.drawXbm(50, 3, 20, 20, mqtt_logo);
   }
 }
 
@@ -235,24 +347,16 @@ void showDispOTA(unsigned int progress, unsigned int total)               // Sho
       break;
   }
   if (up) {
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(5, 5);
-    display.print("OTA Update: ");
-    display.print(otaStatus);
+    display.clear();
+    display.setFont(ArialMT_Plain_10);
+    display.drawString(5, 5, "OTA Update: ");
+    display.drawString(20, 5, String(otaStatus));
     int xoffset = 5;
-    display.drawRect( xoffset, 25, otaStatus + xoffset, 2, WHITE);
-    display.fillRect( xoffset, 25, otaStatus + xoffset, 2, WHITE);
+    display.drawRect( xoffset, 25, otaStatus + xoffset, 2);
+    display.fillRect( xoffset, 25, otaStatus + xoffset, 2);
     if (otaStatus > 80) {
-      display.setCursor(5, 40);
-      display.setTextSize(1);
-      display.setTextColor(WHITE);
-      display.print("OTA Update finished");
-      display.setCursor(50, 50);
-      display.setTextSize(1);
-      display.setTextColor(WHITE);
-      display.print("... reboot");
+      display.drawString(5, 40, "OTA Update finished");
+      display.drawString(50, 50, "... reboot");
     }
     display.display();
   }
@@ -260,102 +364,86 @@ void showDispOTA(unsigned int progress, unsigned int total)               // Sho
 
 void showDispOTAEr(String value)
 {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(5, 5);
-  display.print("OTA Update Error: ");
-  display.print(value);
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(5, 5, "OTA Update Error: ");
+  display.drawString(20, 5, value);
   display.display();
 }
 
 
 void showDispCbpi()               // SHow CBPI icon
 {
-  display.clearDisplay();
-  display.drawBitmap(41, 0, cbpi_logo, 50, 50, WHITE);
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.drawXbm(41, 0, 50, 50, cbpi_logo);
 }
 
 void showDispLines()              // Draw lines in the bottom
 {
-  display.drawLine(0, 50, 128, 50, WHITE);
-  display.drawLine(42, 50, 42, 64, WHITE);
-  display.drawLine(84, 50, 84, 64, WHITE);
+  display.drawLine(0, 50, 128, 50);
+  display.drawLine(42, 50, 42, 64);
+  display.drawLine(84, 50, 84, 64);
 }
 
 void showDispSen()                // Show Sensor status on the left
 {
-  display.setTextSize(1);
-  display.setCursor(3, 55);
-  display.setTextColor(WHITE);
-  //oledDisplay.senOK ? display.print("Sen:ok") : display.print("Sen:Er");
+  display.setFont(ArialMT_Plain_10);
   if (sensorsStatus == 0) {
-    display.print("Sen: ");
-    display.print(numberOfSensors);
+    display.drawString(3, 55, "Sen: ");
+    display.drawString(8, 55, String(numberOfSensors));
   }
-  else display.print("Sen:Er");
+  else display.drawString(3, 55, "Sen:Er");
 }
 void showDispAct()                // Show actor status in the mid
 {
-  display.setCursor(45, 55);
-  display.setTextColor(WHITE);
+  display.setFont(ArialMT_Plain_10);
   if (actorsStatus == 0) {
-    display.print("Act: ");
-    display.print(numberOfActors);
+    display.drawString(45, 55, "Act: ");
+    display.drawString(48, 55, String(numberOfActors));
   }
-  else display.print("Act:Er");
+  else display.drawString(45, 55, "Act:Er");
 }
 void showDispInd()                // Show InductionCooker status on the right
 {
-  display.setTextSize(1);
-  display.setCursor(87, 55);
-  display.setTextColor(WHITE);
-  if (inductionStatus == 0) display.print("Ind:ok");
-  else display.print("Ind:Er");
+  display.setFont(ArialMT_Plain_10);
+  if (inductionStatus == 0) display.drawString(87, 55 , "Ind:ok");
+  else display.drawString(87, 55 , "Ind:Er");
 }
 
 void showDispTime(String value)   // Show time value in the upper left with fontsize 2
 {
-  display.setCursor(5, 5);
-  display.setTextSize(2);
-  display.setTextColor(WHITE);
-  display.print(value);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(5, 5, value);
 }
 
 void showDispIP(String value)      // Show IP address under time value with fontsize 1
 {
-  display.setCursor(5, 30);
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.print(value);
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(35, 20, value);
 }
 
 void showDispSet(String value)    // Show current station mode
 {
-  display.clearDisplay();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(5, 30);
-  display.print(value);
+  display.clear();
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(5, 30, value);
   display.display();
 }
 
 void showDispSet()                // Show current station mode
 {
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(1, 54);
-  display.print("SET ");
-  display.print(WiFi.localIP().toString());
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(1, 54 , "SET");
+  display.drawString(4, 54 , WiFi.localIP().toString());
   display.display();
 }
 
 void showDispSTA()               // Show AP mode
 {
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(8, 54);
-  display.print("STA ");
-  display.print(WiFi.localIP().toString());
+  display.setFont(ArialMT_Plain_10);
+  display.drawString(8, 54 , "STA");
+  display.drawString(12, 54 , WiFi.localIP().toString());
   display.display();
+
 }

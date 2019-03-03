@@ -109,7 +109,7 @@ bool loadConfig() {
     DBG_PRINTLN(is_enabled_bl);
     DBG_PRINTLN("--------------------");
   }
-  inductionCooker.change(StringToPin(pin_white), StringToPin(pin_yellow), StringToPin(pin_blue), js_mqtttopic, delayoff, is_enabled_bl);
+/*  inductionCooker.change(StringToPin(pin_white), StringToPin(pin_yellow), StringToPin(pin_blue), js_mqtttopic, delayoff, is_enabled_bl);*/
 
   JsonArray& jsodisplay = json["display"];
   JsonObject& jsdisplay = jsodisplay[0];
@@ -119,9 +119,6 @@ bool loadConfig() {
   dispAddress.toCharArray(copy, 4);
   int address = strtol(copy, 0, 16);
   int newdup = atol(jsdisplay["updisp"]);
-  if (newdup > 0) {
-    DISP_UPDATE = newdup;
-  }
   String dispStatus = jsdisplay["ENABLED"];
   if (dispStatus == "1") {
     oledDisplay.dispEnabled = 1;

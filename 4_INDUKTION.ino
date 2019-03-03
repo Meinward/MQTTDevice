@@ -42,7 +42,7 @@ class induction
     void change(byte pinwhite, byte pinyellow, byte pinblue, String topic, long delayoff, bool is_enabled) {
       if (isEnabled) {
         // aktuelle PINS deaktivieren
-        if (isPin(PIN_WHITE)) {
+/*        if (isPin(PIN_WHITE)) {
           digitalWrite(PIN_WHITE, HIGH);
           pins_used[PIN_WHITE] = false;
         }
@@ -57,7 +57,7 @@ class induction
           //pinMode(PIN_INTERRUPT, OUTPUT);
           digitalWrite(PIN_INTERRUPT, HIGH);
           pins_used[PIN_INTERRUPT] = false;
-        }
+        }*/
 
         mqtt_unsubscribe();
       }
@@ -78,7 +78,7 @@ class induction
 
       if (isEnabled) {
         // neue PINS aktiveren
-        if (isPin(PIN_WHITE)) {
+/*        if (isPin(PIN_WHITE)) {
           pinMode(PIN_WHITE, OUTPUT);
           digitalWrite(PIN_WHITE, LOW);
           pins_used[PIN_WHITE] = true;
@@ -94,7 +94,7 @@ class induction
           pinMode(PIN_INTERRUPT, INPUT_PULLUP);
           //attachInterrupt(digitalPinToInterrupt(PIN_INTERRUPT), readInputWrap, CHANGE);
           pins_used[PIN_INTERRUPT] = true;
-        }
+        }*/
         if (client.connected()) {
           mqtt_subscribe();
         }
@@ -377,7 +377,7 @@ void handleRequestInduction() {
 }
 
 void handleRequestIndu() {
-  String request = server.arg(0);
+/*  String request = server.arg(0);
   String message;
 
   if (request == "isEnabled") {
@@ -429,7 +429,7 @@ void handleRequestIndu() {
   }
 
 SendMessage:
-  server.send(200, "text/plain", message);
+  server.send(200, "text/plain", message);*/
 }
 
 void handleSetIndu() {

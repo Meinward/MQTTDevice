@@ -190,12 +190,12 @@ void listenerSystem( int event, int parm )                           // System e
       server.handleClient();
       break;
     case EM_MDNS: // check MDSN (24)
-      if (startMDNS) mdns.update();
+/*      if (startMDNS) mdns.update();*/
       break;
     case EM_NTP:       // NTP Update (25)
       timeClient.update();
     case EM_MDNSET:       // MDNS setup (26)
-      if (startMDNS && nameMDNS[0] != '\0' && WiFi.status() != WL_CONNECTED) {
+/*      if (startMDNS && nameMDNS[0] != '\0' && WiFi.status() != WL_CONNECTED) {
         if (!mdns.begin(nameMDNS, WiFi.localIP())) {
           DBG_PRINT("EM: MDNS failed");
           startMDNS = false;
@@ -208,12 +208,12 @@ void listenerSystem( int event, int parm )                           // System e
           IPAddress ip = WiFi.localIP();
           DBG_PRINTLN(ip);
         }
-      }
+      }*/
       break;
     case EM_DISPUP:      // Display screen output update (30)
       if (oledDisplay.dispEnabled) {
         oledDisplay.digClock();
-        oledDisplay.dispUpdate();
+        ui.update();
       }
       break;
     default:

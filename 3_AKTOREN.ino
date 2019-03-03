@@ -169,7 +169,7 @@ class Actor
         return "0";
       }
     }
-};
+}; 
 
 /* Initialisierung des Arrays */
 Actor actors[6] = {
@@ -183,10 +183,10 @@ Actor actors[6] = {
 
 /* Funktionen für Loop */
 void handleActors() {
-  for (int i = 0; i < numberOfActors; i++) {
+/*  for (int i = 0; i < numberOfActors; i++) {
     actors[i].Update();
     yield();
-  }
+  }*/
 }
 
 /* Funktionen für Web */
